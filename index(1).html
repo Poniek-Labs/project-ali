@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Class Sign-Out</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;600;700&family=DM+Mono:wght@400;500&display=swap');
+
+  :root {
+    --bg: #0f1117;
+    --surface: #1a1d27;
+    --surface2: #22263a;
+    --border: #2e3350;
+    --accent: #4f8ef7;
+    --accent2: #7c5bf5;
+    --green: #3ecf8e;
+    --red: #f7614f;
+    --amber: #f5a623;
+    --text: #e8eaf6;
+    --muted: #7b82a8;
+    --card-shadow: 0 4px 24px rgba(0,0,0,0.4);
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: 'Space Grotesk', sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 0;
+  }
+
+  /* ── Header ── */
+  header {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 16px 24px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  .logo {
+    width: 40px; height: 40px;
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 20px; flex-shrink: 0;
+  }
+
+  header h1 {
+    font-size: 18px; font-weight: 700;
+    letter-spacing: -0.3px;
+  }
+
+  header p { font-size: 12px; color: var(--muted); margin-top: 1px; }
+
+  .header-right {
+    margin-left: auto;
+    display: flex; align-items: center; gap: 10px;
+  }
+
+  /* ── Status pill ── */
+  .status-pill {
+    padding: 6px 14px; border-radius: 20px;
+    font-size: 12px; font-weight: 600; letter-spacing: 0.3px;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .status-pill.free   { background: rgba(62,207,142,.15); color: var(--green); border: 1px solid rgba(62,207,142,.3); }
+  .status-pill.taken  { background: rgba(247,97,79,.15);  color: var(--red);   border: 1px solid rgba(247,97,79,.3); }
+  .status-pill .dot { width:7px;height:7px;border-radius:50%;background:currentColor; animation: pulse 1.5s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
+
+  /* ── Layout ── */
+  .layout {
+    display: grid;
+    grid-template-columns: 380px 1fr;
+    gap: 0;
+    min-height: calc(100vh - 73px);
+  }
+
+  @media (max-width: 768px) {
+    .layout { grid-template-columns: 1fr; }
+    .sidebar { border-right: none; border-bottom: 1px solid var(--border); }
+  }
+
+  /* ── Sidebar (sign-out form) ── */
+  .sidebar {
+    background: var(--surface);
+    border-right: 1px solid var(--border);
+    padding: 28px 24px;
+    display: flex; flex-direction: column; gap: 22px;
+  }
+
+  .section-label {
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1.2px;
+    color: var(--muted); margin-bottom: 8px;
+  }
+
+  .field-group { display: flex; flex-direction: column; }
+
+  input[type="text"] {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px;
+    padding: 13px 16px;
+    outline: none;
+    transition: border-color .2s, box-shadow .2s;
+    width: 100%;
+  }
+  input[type="text"]:focus {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px rgba(79,142,247,.15);
+  }
+  input[type="text"]::placeholder { color: var(--muted); }
+
+  /* ── Destination grid ── */
+  .dest-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 10px;
+  }
+
+  .dest-btn {
+    background: var(--surface2);
+    border: 2px solid var(--border);
+    border-radius: 12px;
+    color: var(--muted);
+    cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px; font-weight: 600;
+    padding: 16px 10px;
+    display: flex; flex-direction: column; align-items: center; gap: 8px;
+    transition: all .18s;
+    user-select: none;
+  }
+  .dest-btn .icon { font-size: 26px; }
+  .dest-btn:hover { border-color: var(--accent); color: var(--text); }
+  .dest-btn.selected {
+    border-color: var(--accent);
+    background: rgba(79,142,247,.12);
+    color: var(--text);
+    box-shadow: 0 0 0 3px rgba(79,142,247,.15);
+  }
+
+  /* ── Submit button ── */
+  .sign-btn {
+    background: linear-gradient(135deg, var(--accent), var(--accent2));
+    border: none; border-radius: 12px;
+    color: #fff; cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 16px; font-weight: 700;
+    padding: 16px;
+    width: 100%; transition: opacity .2s, transform .1s;
+    letter-spacing: 0.2px;
+  }
+  .sign-btn:hover { opacity: .9; }
+  .sign-btn:active { transform: scale(.98); }
+  .sign-btn:disabled { opacity: .4; cursor: not-allowed; transform: none; }
+
+  /* ── Currently out card ── */
+  .out-card {
+    background: rgba(247,97,79,.08);
+    border: 1.5px solid rgba(247,97,79,.3);
+    border-radius: 14px; padding: 18px;
+  }
+  .out-card .out-name { font-size: 17px; font-weight: 700; margin-bottom: 4px; }
+  .out-card .out-meta { font-size: 12px; color: var(--muted); display: flex; gap: 10px; flex-wrap: wrap; }
+  .out-card .out-dest {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(247,97,79,.18); color: var(--red);
+    border-radius: 20px; padding: 3px 10px;
+    font-size: 12px; font-weight: 600;
+    margin-top: 8px;
+  }
+  .return-btn {
+    margin-top: 14px; width: 100%;
+    background: var(--red);
+    border: none; border-radius: 10px;
+    color: #fff; cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 14px; font-weight: 700;
+    padding: 12px; transition: opacity .2s;
+  }
+  .return-btn:hover { opacity: .85; }
+
+  /* ── Main (log) ── */
+  .main { padding: 28px 24px; display: flex; flex-direction: column; gap: 20px; }
+
+  .log-toolbar {
+    display: flex; gap: 12px; align-items: center; flex-wrap: wrap;
+  }
+
+  .search-wrap {
+    flex: 1; min-width: 200px;
+    position: relative;
+  }
+  .search-wrap input {
+    padding-left: 40px;
+  }
+  .search-wrap .search-icon {
+    position: absolute; left: 13px; top: 50%;
+    transform: translateY(-50%);
+    color: var(--muted); font-size: 16px; pointer-events: none;
+  }
+
+  .pdf-btn {
+    background: var(--surface2);
+    border: 1.5px solid var(--border);
+    border-radius: 10px;
+    color: var(--text);
+    cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px; font-weight: 600;
+    padding: 11px 18px;
+    display: flex; align-items: center; gap: 8px;
+    transition: all .18s; white-space: nowrap;
+  }
+  .pdf-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+  .clear-btn {
+    background: transparent;
+    border: 1.5px solid rgba(247,97,79,.4);
+    border-radius: 10px;
+    color: var(--red);
+    cursor: pointer;
+    font-family: 'Space Grotesk', sans-serif;
+    font-size: 13px; font-weight: 600;
+    padding: 11px 18px;
+    white-space: nowrap;
+    transition: all .18s;
+  }
+  .clear-btn:hover { background: rgba(247,97,79,.1); }
+
+  /* ── Log table ── */
+  .log-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 16px;
+    overflow: hidden;
+  }
+
+  table {
+    width: 100%; border-collapse: collapse;
+    font-size: 13px;
+  }
+  thead th {
+    background: var(--surface2);
+    padding: 12px 16px;
+    text-align: left;
+    font-size: 11px; font-weight: 600;
+    text-transform: uppercase; letter-spacing: 1px;
+    color: var(--muted);
+    border-bottom: 1px solid var(--border);
+  }
+  tbody tr { border-bottom: 1px solid var(--border); transition: background .15s; }
+  tbody tr:last-child { border-bottom: none; }
+  tbody tr:hover { background: var(--surface2); }
+  tbody td { padding: 13px 16px; vertical-align: middle; }
+
+  .td-name { font-weight: 600; }
+  .td-time { font-family: 'DM Mono', monospace; font-size: 12px; color: var(--muted); }
+
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px;
+    border-radius: 20px; padding: 3px 10px;
+    font-size: 11px; font-weight: 600;
+  }
+  .badge.washroom { background: rgba(79,142,247,.15); color: var(--accent); }
+  .badge.water    { background: rgba(62,207,142,.15); color: var(--green); }
+  .badge.office   { background: rgba(245,166,35,.15); color: var(--amber); }
+  .badge.other    { background: rgba(123,91,245,.15); color: #b09eff; }
+
+  .still-out {
+    display: inline-flex; align-items: center; gap: 5px;
+    background: rgba(247,97,79,.12); color: var(--red);
+    border-radius: 20px; padding: 3px 12px;
+    font-size: 11px; font-weight: 600;
+  }
+
+  .empty-state {
+    padding: 60px 20px; text-align: center; color: var(--muted);
+  }
+  .empty-state .e-icon { font-size: 48px; margin-bottom: 12px; }
+  .empty-state p { font-size: 14px; }
+
+  /* ── Toast ── */
+  #toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%) translateY(80px);
+    background: var(--surface2); border: 1px solid var(--border);
+    border-radius: 12px; padding: 13px 22px;
+    font-size: 14px; font-weight: 500;
+    box-shadow: var(--card-shadow);
+    opacity: 0; transition: all .35s cubic-bezier(.34,1.56,.64,1);
+    pointer-events: none; z-index: 999; white-space: nowrap;
+  }
+  #toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+  #toast.success { border-color: rgba(62,207,142,.4); color: var(--green); }
+  #toast.error   { border-color: rgba(247,97,79,.4);  color: var(--red); }
+
+  /* ── Clock ── */
+  .clock {
+    font-family: 'DM Mono', monospace; font-size: 13px;
+    color: var(--muted);
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">🚪</div>
+  <div>
+    <h1>Class Sign-Out</h1>
+    <p id="dateDisplay"></p>
+  </div>
+  <div class="header-right">
+    <span class="clock" id="clockDisplay"></span>
+    <div class="status-pill free" id="statusPill">
+      <span class="dot"></span>
+      <span id="statusText">Pass Available</span>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+  <!-- ── Sidebar ── -->
+  <aside class="sidebar">
+    <div id="outCard" style="display:none"></div>
+
+    <div class="field-group" id="formSection">
+      <div class="section-label">Your Name</div>
+      <input type="text" id="nameInput" placeholder="First & last name" autocomplete="off" spellcheck="false">
+    </div>
+
+    <div id="destSection" class="field-group">
+      <div class="section-label">Destination</div>
+      <div class="dest-grid">
+        <button class="dest-btn" data-dest="WASHROOM" onclick="selectDest(this)">
+          <span class="icon">🚻</span> Washroom
+        </button>
+        <button class="dest-btn" data-dest="WATER" onclick="selectDest(this)">
+          <span class="icon">💧</span> Water
+        </button>
+        <button class="dest-btn" data-dest="OFFICE" onclick="selectDest(this)">
+          <span class="icon">🏫</span> Office
+        </button>
+        <button class="dest-btn" data-dest="OTHER" onclick="selectDest(this)">
+          <span class="icon">📋</span> Other
+        </button>
+      </div>
+    </div>
+
+    <button class="sign-btn" id="signOutBtn" onclick="signOut()" disabled>
+      Sign Out →
+    </button>
+
+    <div style="font-size:12px;color:var(--muted);text-align:center;line-height:1.6">
+      Only one student can be out at a time.<br>
+      The pass must be returned before anyone else can sign out.
+    </div>
+  </aside>
+
+  <!-- ── Main ── -->
+  <main class="main">
+    <div class="log-toolbar">
+      <div class="search-wrap">
+        <span class="search-icon">🔍</span>
+        <input type="text" id="searchInput" placeholder="Search log by name, destination…" oninput="renderLog()">
+      </div>
+      <button class="pdf-btn" onclick="exportPDF()">📄 Export PDF</button>
+    </div>
+
+    <div class="log-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Name</th>
+            <th>Destination</th>
+            <th>Left</th>
+            <th>Returned</th>
+            <th>Duration</th>
+          </tr>
+        </thead>
+        <tbody id="logBody"></tbody>
+      </table>
+      <div class="empty-state" id="emptyState">
+        <div class="e-icon">📋</div>
+        <p>No entries yet. Sign someone out to get started.</p>
+      </div>
+    </div>
+  </main>
+</div>
+
+<div id="toast"></div>
+
+<script>
+// ── State ──
+let log = JSON.parse(localStorage.getItem('signout_log') || '[]');
+let currentOut = JSON.parse(localStorage.getItem('signout_current') || 'null');
+let selectedDest = null;
+
+// ── Clock ──
+function tick() {
+  const now = new Date();
+  document.getElementById('clockDisplay').textContent =
+    now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  document.getElementById('dateDisplay').textContent =
+    now.toLocaleDateString([], {weekday:'long', month:'long', day:'numeric', year:'numeric'});
+}
+tick(); setInterval(tick, 1000);
+
+// ── Dest selection ──
+function selectDest(btn) {
+  if (currentOut) return;
+  document.querySelectorAll('.dest-btn').forEach(b => b.classList.remove('selected'));
+  btn.classList.add('selected');
+  selectedDest = btn.dataset.dest;
+  updateSignBtn();
+}
+
+function updateSignBtn() {
+  const name = document.getElementById('nameInput').value.trim();
+  document.getElementById('signOutBtn').disabled = !(name && selectedDest && !currentOut);
+}
+
+document.getElementById('nameInput').addEventListener('input', updateSignBtn);
+
+// ── Sign Out ──
+function signOut() {
+  if (currentOut) { showToast('Someone is already out!', 'error'); return; }
+  const name = document.getElementById('nameInput').value.trim();
+  if (!name) { showToast('Please enter your name.', 'error'); return; }
+  if (!selectedDest) { showToast('Please choose a destination.', 'error'); return; }
+
+  const now = new Date();
+  currentOut = { name, dest: selectedDest, left: now.toISOString(), id: Date.now() };
+  localStorage.setItem('signout_current', JSON.stringify(currentOut));
+
+  document.getElementById('nameInput').value = '';
+  selectedDest = null;
+  document.querySelectorAll('.dest-btn').forEach(b => b.classList.remove('selected'));
+
+  updateUI();
+  showToast(`${currentOut.name} signed out ✓`, 'success');
+}
+
+// ── Sign In (return) ──
+function signIn() {
+  if (!currentOut) return;
+  const now = new Date();
+  const left = new Date(currentOut.left);
+  const mins = Math.round((now - left) / 60000);
+
+  log.unshift({
+    name: currentOut.name,
+    dest: currentOut.dest,
+    left: currentOut.left,
+    returned: now.toISOString(),
+    duration: mins
+  });
+
+  const name = currentOut.name;
+  localStorage.setItem('signout_log', JSON.stringify(log));
+  currentOut = null;
+  localStorage.setItem('signout_current', 'null');
+
+  updateUI();
+  renderLog();
+  showToast(`${name} signed back in ✓`, 'success');
+}
+
+// ── Update sidebar UI ──
+function updateUI() {
+  const pill = document.getElementById('statusPill');
+  const pillText = document.getElementById('statusText');
+  const formSection = document.getElementById('formSection');
+  const destSection = document.getElementById('destSection');
+  const signBtn = document.getElementById('signOutBtn');
+  const outCardEl = document.getElementById('outCard');
+
+  if (currentOut) {
+    pill.className = 'status-pill taken';
+    pillText.textContent = 'Pass In Use';
+
+    const left = new Date(currentOut.left);
+    const timeStr = left.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    const destIcon = {WASHROOM:'🚻', WATER:'💧', OFFICE:'🏫', OTHER:'📋'}[currentOut.dest];
+
+    outCardEl.style.display = 'block';
+    outCardEl.innerHTML = `
+      <div class="out-card">
+        <div class="out-name">🔴 ${currentOut.name}</div>
+        <div class="out-dest">${destIcon} ${currentOut.dest}</div>
+        <div class="out-meta" style="margin-top:8px">
+          <span>Left at ${timeStr}</span>
+        </div>
+        <button class="return-btn" onclick="signIn()">✅ Sign Back In</button>
+      </div>`;
+
+    formSection.style.opacity = '0.35';
+    formSection.style.pointerEvents = 'none';
+    destSection.style.opacity = '0.35';
+    destSection.style.pointerEvents = 'none';
+    signBtn.disabled = true;
+  } else {
+    pill.className = 'status-pill free';
+    pillText.textContent = 'Pass Available';
+
+    outCardEl.style.display = 'none';
+    outCardEl.innerHTML = '';
+
+    formSection.style.opacity = '1';
+    formSection.style.pointerEvents = '';
+    destSection.style.opacity = '1';
+    destSection.style.pointerEvents = '';
+    updateSignBtn();
+  }
+}
+
+// ── Render log ──
+function renderLog() {
+  const q = document.getElementById('searchInput').value.trim().toLowerCase();
+  const filtered = log.filter(e =>
+    e.name.toLowerCase().includes(q) ||
+    e.dest.toLowerCase().includes(q)
+  );
+
+  const tbody = document.getElementById('logBody');
+  const empty = document.getElementById('emptyState');
+
+  if (filtered.length === 0 && !currentOut) {
+    tbody.innerHTML = '';
+    empty.style.display = 'block';
+    return;
+  }
+  empty.style.display = 'none';
+
+  const rows = [];
+
+  // Show currently out at top if no search filter
+  if (currentOut && (!q || currentOut.name.toLowerCase().includes(q) || currentOut.dest.toLowerCase().includes(q))) {
+    const left = new Date(currentOut.left);
+    const timeStr = left.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    const destIcon = {WASHROOM:'🚻', WATER:'💧', OFFICE:'🏫', OTHER:'📋'}[currentOut.dest];
+    rows.push(`<tr>
+      <td class="td-time">—</td>
+      <td class="td-name">${esc(currentOut.name)}</td>
+      <td><span class="badge ${currentOut.dest.toLowerCase()}">${destIcon} ${currentOut.dest}</span></td>
+      <td class="td-time">${timeStr}</td>
+      <td><span class="still-out">⏳ Still out</span></td>
+      <td class="td-time">—</td>
+    </tr>`);
+  }
+
+  filtered.forEach((e, i) => {
+    const left = new Date(e.left);
+    const returned = new Date(e.returned);
+    const leftStr = left.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    const retStr = returned.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    const destIcon = {WASHROOM:'🚻', WATER:'💧', OFFICE:'🏫', OTHER:'📋'}[e.dest];
+    const dateStr = left.toLocaleDateString([], {month:'short', day:'numeric'});
+    const durStr = e.duration < 1 ? '<1 min' : `${e.duration} min${e.duration!==1?'s':''}`;
+    rows.push(`<tr>
+      <td class="td-time">${filtered.length - i}</td>
+      <td class="td-name">${esc(e.name)}</td>
+      <td><span class="badge ${e.dest.toLowerCase()}">${destIcon} ${e.dest}</span></td>
+      <td class="td-time">${dateStr}, ${leftStr}</td>
+      <td class="td-time">${retStr}</td>
+      <td class="td-time">${durStr}</td>
+    </tr>`);
+  });
+
+  tbody.innerHTML = rows.join('');
+}
+
+function esc(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ── Clear log ──
+function clearLog() {
+  if (!confirm('Clear the entire log? This cannot be undone.')) return;
+  log = [];
+  localStorage.setItem('signout_log', '[]');
+  renderLog();
+  showToast('Log cleared', 'success');
+}
+
+// ── Export PDF ──
+function exportPDF() {
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'letter' });
+
+  const today = new Date().toLocaleDateString([], {weekday:'long', year:'numeric', month:'long', day:'numeric'});
+
+  // Header bar
+  doc.setFillColor(26, 29, 39);
+  doc.rect(0, 0, 280, 22, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(14);
+  doc.setTextColor(232, 234, 246);
+  doc.text('Class Sign-Out Log', 14, 14);
+  doc.setFont('helvetica', 'normal');
+  doc.setFontSize(9);
+  doc.setTextColor(123, 130, 168);
+  doc.text(`Generated: ${today}`, 14, 20);
+
+  if (currentOut) {
+    doc.setTextColor(220, 80, 60);
+    doc.text(`Currently out: ${currentOut.name} (${currentOut.dest})`, 140, 14);
+  }
+
+  // Column config
+  const colW = [12, 60, 36, 40, 36, 28];
+  const headers = ['#', 'Name', 'Destination', 'Left', 'Returned', 'Duration'];
+  let y = 30;
+
+  // Table header row — dark navy
+  doc.setFillColor(26, 38, 70);
+  doc.rect(12, y - 5, 256, 8, 'F');
+  doc.setFont('helvetica', 'bold');
+  doc.setFontSize(8);
+  doc.setTextColor(255, 255, 255);
+  let x = 14;
+  headers.forEach((h, i) => { doc.text(h, x, y); x += colW[i]; });
+  y += 6;
+
+  // Data rows — all blue
+  log.forEach((e, i) => {
+    if (y > 190) {
+      doc.addPage();
+      y = 20;
+      // Reprint header on new page
+      doc.setFillColor(26, 38, 70);
+      doc.rect(12, y - 5, 256, 8, 'F');
+      doc.setFont('helvetica', 'bold');
+      doc.setFontSize(8);
+      doc.setTextColor(255, 255, 255);
+      x = 14;
+      headers.forEach((h, i) => { doc.text(h, x, y); x += colW[i]; });
+      y += 6;
+    }
+
+    // Blue row background — alternating between two blues for subtle depth
+    if (i % 2 === 0) {
+      doc.setFillColor(210, 225, 250);
+    } else {
+      doc.setFillColor(190, 210, 245);
+    }
+    doc.rect(12, y - 4, 256, 7, 'F');
+
+    const left = new Date(e.left);
+    const ret  = new Date(e.returned);
+    const leftStr = left.toLocaleDateString([], {month:'short', day:'numeric'}) + ' ' +
+                    left.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    const retStr  = ret.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    const durStr  = e.duration < 1 ? '<1 min' : `${e.duration} min`;
+
+    doc.setFont('helvetica', 'normal');
+    doc.setTextColor(15, 25, 60);
+    x = 14;
+    const row = [`${log.length - i}`, e.name, e.dest, leftStr, retStr, durStr];
+    row.forEach((cell, ci) => {
+      doc.setFontSize(ci === 1 ? 9 : 8);
+      doc.text(String(cell), x, y);
+      x += colW[ci];
+    });
+    y += 7;
+  });
+
+  // Currently out row — red tint
+  if (currentOut) {
+    doc.setFillColor(250, 210, 205);
+    doc.rect(12, y - 4, 256, 7, 'F');
+    doc.setFont('helvetica', 'bold');
+    doc.setTextColor(180, 40, 20);
+    const left = new Date(currentOut.left);
+    const leftStr = left.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    x = 14;
+    const row = ['—', currentOut.name, currentOut.dest, leftStr, 'Still out', '—'];
+    row.forEach((cell, ci) => {
+      doc.setFontSize(ci === 1 ? 9 : 8);
+      doc.text(String(cell), x, y);
+      x += colW[ci];
+    });
+  }
+
+  // Footer
+  doc.setFont('helvetica', 'italic');
+  doc.setFontSize(7);
+  doc.setTextColor(100, 100, 130);
+  doc.text(`Total entries: ${log.length}`, 14, 203);
+
+  doc.save(`signout-log-${new Date().toISOString().slice(0,10)}.pdf`);
+  showToast('PDF exported!', 'success');
+}
+
+// ── Toast ──
+let toastTimer;
+function showToast(msg, type='') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = `show ${type}`;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { t.className = ''; }, 2800);
+}
+
+// ── Init ──
+updateUI();
+renderLog();
+</script>
+</body>
+</html>
